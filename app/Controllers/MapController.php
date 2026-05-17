@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\API\ResponseTrait;
+use CodeIgniter\Database\Query;
 
 class MapController extends BaseController
 {
@@ -52,5 +53,97 @@ class MapController extends BaseController
         }, $results);
 
         return $this->respond($formattedData);
+    }
+
+    /**
+     * Tıklanan koordinatın en yakın fay hattına olan mesafesini ve risk durumunu hesaplar.
+     */
+    public function analyzeRisk()
+    {
+        $db = \Config\Database::connect();
+
+        // Frontend'den (Vue 3) gelecek olan tıklama koordinatları
+        $lat = $this->request->getGet('lat'); // Enlem
+        $lng = $this->request->getGet('lng'); // Boylam
+
+        if (!$lat || !$lng) {
+            return $this->fail('Koordinat bilgileri eksik!', 400);
+        }
+
+        // Tıklanan noktayı WKT formatında POINT haline getiriyoruz
+        $pointWKT = "POINT($lng $lat)";
+
+        // Tüm MySQL ve MariaDB sürümlerinde %100 çalışan evrensel yöntem:
+        // 1. ST_Distance ile düzlem üzerinde en yakın FAY hattını (çizgiyi) nokta atışı buluyoruz.
+        // 2. Bulduğumuz bu en yakın fay hattını alıp, PHP tarafında mesafe analizi yapacağız.
+        $sql = "SELECT id, name, type, 
+                       ST_AsText(line_geom) AS line_text,
+                       ST_Distance(line_geom, ST_GeomFromText(?, 4326)) AS distance_degrees
+                FROM fault_lines 
+                ORDER BY distance_degrees ASC 
+                LIMIT 1";
+
+        $query = $db->query($sql, [$pointWKT]);
+        $closestFault = $query->getRowArray();
+
+        if (!$closestFault) {
+            return $this->respond([
+                'status' => 'safe',
+                'message' => 'Yakınlarda tanımlı bir fay hattı bulunamadı.'
+            ]);
+        }
+
+        // --- HARİKA BİR MATEMATİK HİLESİ ---
+        // Madem veritabanı çizgi-nokta arası küresel mesafeyi hesaplamıyor, 
+        // biz de o en yakın çizginin (LINESTRING) koordinatlarını PHP array'ine çeviririz.
+        // Sonra kullanıcının noktası ile o çizgideki tüm noktalar arasındaki gerçek küresel mesafeyi (Haversine)
+        // SQL'in yerleşik ST_Distance_Sphere(POINT, POINT) fonksiyonuyla veritabanına tek tek hesaplatırız.
+
+        $lineText = $closestFault['line_text']; // LINESTRING(35.1 38.2, 35.2 38.3, ...)
+        preg_match_with_matches: // Koordinatları temizleyelim
+        preg_match_all('/([0-9.]+\s[0-9.]+)/', $lineText, $matches);
+
+        $minDistanceMeter = PHP_FLOAT_MAX;
+
+        foreach ($matches[0] as $coord) {
+            // $coord = "35.1 38.2" -> "POINT(35.1 38.2)"
+            $faultPointWKT = "POINT(" . $coord . ")";
+
+            // İki NOKTA arasındaki mesafeyi MariaDB sorunsuz hesaplar!
+            $distQuery = $db->query("SELECT ST_Distance_Sphere(ST_GeomFromText(?, 4326), ST_GeomFromText(?, 4326)) AS d", [$pointWKT, $faultPointWKT]);
+            $distResult = $distQuery->getRowArray();
+
+            if ($distResult && (float)$distResult['d'] < $minDistanceMeter) {
+                $minDistanceMeter = (float)$distResult['d'];
+            }
+        }
+
+        $distanceMeter = $minDistanceMeter;
+
+        // Risk skalası algoritması
+        if ($distanceMeter <= 500) {
+            $riskLevel = 'Critical';
+            $riskColor = '🔴';
+        } elseif ($distanceMeter <= 2000) {
+            $riskLevel = 'High';
+            $riskColor = '🟠';
+        } elseif ($distanceMeter <= 5000) {
+            $riskLevel = 'Medium';
+            $riskColor = '🟡';
+        } else {
+            $riskLevel = 'Low';
+            $riskColor = '🟢';
+        }
+
+        return $this->respond([
+            'input_coords' => [(float)$lat, (float)$lng],
+            'fault_id'     => (int)$closestFault['id'],
+            'fault_name'   => $closestFault['name'],
+            'fault_type'   => $closestFault['type'],
+            'distance_m'   => $distanceMeter,
+            'distance_km'  => round($distanceMeter / 1000, 2),
+            'risk_level'   => $riskLevel,
+            'risk_color'   => $riskColor
+        ]);
     }
 }
