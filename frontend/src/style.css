@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Prevent Tailwind CSS from overriding Leaflet image styling */
+.leaflet-container img,
+.leaflet-container .leaflet-marker-icon,
+.leaflet-container .leaflet-marker-shadow,
+.leaflet-container .leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+}
+
 html, body, #app {
   margin: 0;
   padding: 0;

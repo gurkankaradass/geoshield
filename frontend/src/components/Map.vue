@@ -1,7 +1,26 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, shallowRef } from 'vue';
 import L from 'leaflet';
 import type { FaultLine } from '../types/geo';
+
+// 🚨 LEAFLET + VUE 3 ZOOM ANIMATION SAFETY PATCH
+const originalAnimateZoom = L.Marker.prototype._animateZoom;
+L.Marker.prototype._animateZoom = function (opt: any) {
+  if (!this._map) return;
+  originalAnimateZoom.call(this, opt);
+};
+
+// 🚨 VITE + LEAFLET IKON YOLU DÜZELTMESİ
+const defaultIcon = L.icon({
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],      // İkonun gerçek piksel boyutu
+  iconAnchor: [12, 41],    // İkonun tam olarak hangi noktasının koordinata çakılacağı (En alt orta nokta)
+  popupAnchor: [1, -34],   // Açılacak popup'ın ikona göre konumu
+  shadowSize: [41, 41],
+  shadowAnchor: [12, 41]   // Gölge ikonun çakılma noktası (ikon ile aynı)
+});
 
 // Tıklama olayını dışarıya (App.vue'ya) paslamak için emit tanımlıyoruz
 const emit = defineEmits<{
@@ -9,13 +28,14 @@ const emit = defineEmits<{
 }>();
 
 const mapContainer = ref<HTMLElement | null>(null);
-const map = ref<L.Map | null>(null);
+// Vue 3 reactivity sisteminin Leaflet nesnelerini bozmasını önlemek için shallowRef kullanıyoruz
+const map = shallowRef<L.Map | null>(null);
 
 // Haritadaki çizgileri mükemmel bir performansla yönetmek için Leaflet FeatureGroup kullanıyoruz
 const faultLayerGroup = L.featureGroup();
 
-// Aktif tıklama marker'ını hafızada tutuyoruz ki her tıklandığında eskisi silinsin
-let activeMarker: L.Marker | null = null;
+// Aktif tıklama marker'ını güvenli ve temiz yönetmek için Leaflet LayerGroup kullanıyoruz
+const markerLayerGroup = L.layerGroup();
 
 // API'den dinamik veri çeken fonksiyon
 const fetchFaultLines = async () => {
@@ -55,9 +75,9 @@ const fetchFaultLines = async () => {
 
             // Çizgiyi oluşturup rengini ve kalınlığını ayarlıyoruz
             const polyline = L.polyline(leafletCoords, {
-                color: line.type === 'Diri Fay' ? '#ef4444' : '#f97316', // Tailwind red-500
+                color: line.type === 'Diri Fay' ? '#c10000' : '#ff5000', // Tailwind red-500
                 weight: 3,
-                opacity: 0.85
+                opacity: 1
             });
 
             // Çizgiye tıklandığında popup penceresinde fayın adını ve tipini gösteriyoruz
@@ -84,12 +104,17 @@ onMounted(()=>{
        map.value = L.map(mapContainer.value).setView([38.72, 35.48], 6);
        
        // OpenStreetMap harita katmanını ekliyoruz
-       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-       }).addTo(map.value);
+       L.tileLayer("https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", {
+      maxZoom: 20,
+      subdomains: ["mt0", "mt1", "mt2", "mt3"],
+      attribution: '&copy; Google Maps'
+    }).addTo(map.value);
 
        // Çizgi grubunu haritaya bağlıyoruz
        faultLayerGroup.addTo(map.value);
+
+       // Aktif marker grubunu haritaya bağlıyoruz
+       markerLayerGroup.addTo(map.value);
 
        // Harita ilk yüklendiğinde fayları getir
        fetchFaultLines();
@@ -102,19 +127,20 @@ onMounted(()=>{
        map.value.on('click', (e: L.LeafletMouseEvent) => {
         const {lat, lng} = e.latlng;
         
-        // Eğer ekranda eski bir marker varsa önce onu haritadan siliyoruz
-        if (activeMarker && map.value) {
-            map.value.removeLayer(activeMarker);
-        }
+        // Eski marker'ları gruptan temizliyoruz
+        markerLayerGroup.clearLayers();
 
-        // Tıklanan yere yeni, şık bir marker bırakıyoruz
-        if (map.value) {
-            activeMarker = L.marker([lat, lng]).addTo(map.value);
-        }
+        // Tıklanan yere yeni bir marker oluşturup gruba ekliyoruz
+        L.marker([lat, lng], { icon: defaultIcon }).addTo(markerLayerGroup);
 
         // Üst katmana koordinatları fırlatıyoruz
         emit('map-click', {lat, lng});
        });
+
+       // 🚨 SİHİRLİ SATIR: Harita ilk yüklendiğinde boyut hesaplamalarını milisaniyelik olarak tetikler
+    setTimeout(() => {
+      map.value?.invalidateSize();
+    }, 100);
     }
 });
 </script>
