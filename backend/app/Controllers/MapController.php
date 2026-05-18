@@ -117,7 +117,7 @@ class MapController extends BaseController
         // SQL'in yerleşik ST_Distance_Sphere(POINT, POINT) fonksiyonuyla veritabanına tek tek hesaplatırız.
 
         $lineText = $closestFault['line_text']; // LINESTRING(35.1 38.2, 35.2 38.3, ...)
-        preg_match_with_matches: // Koordinatları temizleyelim
+        // preg_match_with_matches: // Koordinatları temizleyelim
         preg_match_all('/([0-9.]+\s[0-9.]+)/', $lineText, $matches);
 
         $minDistanceMeter = PHP_FLOAT_MAX;

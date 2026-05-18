@@ -3,11 +3,19 @@ import { onMounted, ref } from 'vue';
 import L from 'leaflet';
 import type { FaultLine } from '../types/geo';
 
+// Tıklama olayını dışarıya (App.vue'ya) paslamak için emit tanımlıyoruz
+const emit = defineEmits<{
+    (e: 'map-click', payload: {lat: number; lng: number}): void
+}>();
+
 const mapContainer = ref<HTMLElement | null>(null);
 const map = ref<L.Map | null>(null);
 
 // Haritadaki çizgileri mükemmel bir performansla yönetmek için Leaflet FeatureGroup kullanıyoruz
 const faultLayerGroup = L.featureGroup();
+
+// Aktif tıklama marker'ını hafızada tutuyoruz ki her tıklandığında eskisi silinsin
+let activeMarker: L.Marker | null = null;
 
 // API'den dinamik veri çeken fonksiyon
 const fetchFaultLines = async () => {
@@ -47,7 +55,7 @@ const fetchFaultLines = async () => {
 
             // Çizgiyi oluşturup rengini ve kalınlığını ayarlıyoruz
             const polyline = L.polyline(leafletCoords, {
-                color: "#ef4444", // Tailwind red-500
+                color: line.type === 'Diri Fay' ? '#ef4444' : '#f97316', // Tailwind red-500
                 weight: 3,
                 opacity: 0.85
             });
@@ -55,9 +63,8 @@ const fetchFaultLines = async () => {
             // Çizgiye tıklandığında popup penceresinde fayın adını ve tipini gösteriyoruz
             polyline.bindPopup(`
             <div class="text-gray-900 font-sans p-1">
-            <strong class="text-red-600 block text-sm border-b pb-1 mb-1">🌋 Aktif Fay Segmenti</strong>
+            <strong class="text-red-600 block text-sm border-b pb-1 mb-1">🌋 ${line.type}</strong>
             <p class="text-xs font-semibold m-0">Adı: ${line.name}</p>
-            <p class="text-xs font-gray-600 m-0 mt-0.5">Tipi: ${line.type}</p>
             </div>
             `);
 
@@ -94,7 +101,19 @@ onMounted(()=>{
        // Haritaya tıklama olayını yakalayıp konsola basalım (İleride API'ye bağlanacak)
        map.value.on('click', (e: L.LeafletMouseEvent) => {
         const {lat, lng} = e.latlng;
-        console.log(`Tıklanan Koordinat -> Enlem: ${lat}, Boylam: ${lng}`);
+        
+        // Eğer ekranda eski bir marker varsa önce onu haritadan siliyoruz
+        if (activeMarker && map.value) {
+            map.value.removeLayer(activeMarker);
+        }
+
+        // Tıklanan yere yeni, şık bir marker bırakıyoruz
+        if (map.value) {
+            activeMarker = L.marker([lat, lng]).addTo(map.value);
+        }
+
+        // Üst katmana koordinatları fırlatıyoruz
+        emit('map-click', {lat, lng});
        });
     }
 });
