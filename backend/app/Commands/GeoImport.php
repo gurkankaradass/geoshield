@@ -117,7 +117,7 @@ class GeoImport extends BaseCommand
                 foreach ($points as $p) {
                     $parts = explode(',', $p);
                     if (count($parts) >= 2) {
-                        $formattedPoints[] = "{$parts[0]} {$parts[1]}";
+                        $formattedPoints[] = "{$parts[1]} {$parts[0]}";
                     }
                 }
 

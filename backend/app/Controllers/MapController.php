@@ -16,6 +16,16 @@ class MapController extends BaseController
      */
     public function getFaultLines()
     {
+        // Tarayıcı güvenlik duvarını (CORS) lokalde tamamen devre dışı bırakır
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
+
+        $method = $_SERVER['REQUEST_METHOD'];
+        if ($method == "OPTIONS") {
+            die();
+        }
+
         $db = \Config\Database::connect();
 
         // Vue 3 ön yüzünden (Leaflet) gelecek olan harita sınır koordinatları
@@ -31,7 +41,7 @@ class MapController extends BaseController
 
         // Leaflet ekran sınırlarından (BBox) bir Poligon (Kutu) oluşturuyoruz
         // WKT Formatı: POLYGON((enlem boylam, enlem boylam, ...))
-        $bboxWKT = "POLYGON(($swLng $swLat, $neLng $swLat, $neLng $neLat, $swLng $neLat, $swLng $swLat))";
+        $bboxWKT = "POLYGON(($swLat $swLng, $swLat $neLng, $neLat $neLng, $neLat $swLng, $swLat $swLng))";
 
         // MySQL Spatial Sorgusu: ST_Intersects ile kutunun içinden geçen çizgileri buluyoruz
         // ST_AsText(line_geom) ile de binary veriyi frontend'in anlayacağı metne anlık çeviriyoruz
@@ -60,6 +70,14 @@ class MapController extends BaseController
      */
     public function analyzeRisk()
     {
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
+        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
+
+        if ($_SERVER['REQUEST_METHOD'] === "OPTIONS") {
+            die();
+        }
+
         $db = \Config\Database::connect();
 
         // Frontend'den (Vue 3) gelecek olan tıklama koordinatları
@@ -70,8 +88,7 @@ class MapController extends BaseController
             return $this->fail('Koordinat bilgileri eksik!', 400);
         }
 
-        // Tıklanan noktayı WKT formatında POINT haline getiriyoruz
-        $pointWKT = "POINT($lng $lat)";
+        $pointWKT = "POINT($lat $lng)";
 
         // Tüm MySQL ve MariaDB sürümlerinde %100 çalışan evrensel yöntem:
         // 1. ST_Distance ile düzlem üzerinde en yakın FAY hattını (çizgiyi) nokta atışı buluyoruz.
