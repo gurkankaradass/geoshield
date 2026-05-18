@@ -139,16 +139,16 @@ class MapController extends BaseController
 
         // Risk skalası algoritması
         if ($distanceMeter <= 500) {
-            $riskLevel = 'Critical';
+            $riskLevel = 'Kritik';
             $riskColor = '🔴';
         } elseif ($distanceMeter <= 2000) {
-            $riskLevel = 'High';
+            $riskLevel = 'Yüksek';
             $riskColor = '🟠';
         } elseif ($distanceMeter <= 5000) {
-            $riskLevel = 'Medium';
+            $riskLevel = 'Orta';
             $riskColor = '🟡';
         } else {
-            $riskLevel = 'Low';
+            $riskLevel = 'Düşük';
             $riskColor = '🟢';
         }
 

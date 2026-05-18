@@ -71,10 +71,10 @@ const handleMapClick = async (coords: {lat: number; lng:number}) => {
               <span class="text-xs font-medium text-gray-400">Sismik Risk Seviyesi</span>
               <span class="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase"
               :class="{
-                'bg-red-500/20 text-red-400 border border-red-500/30': analysisResult.risk_level === 'Critical',
-                'bg-orange-500/20 text-orange-400 border border-orange-500/30': analysisResult.risk_level === 'High',
-                'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30': analysisResult.risk_level === 'Medium',
-                'bg-green-500/20 text-green-400 border border-green-500/30': analysisResult.risk_level === 'Low',
+                'bg-red-500/20 text-red-400 border border-red-500/30': analysisResult.risk_level === 'Kritik',
+                'bg-orange-500/20 text-orange-400 border border-orange-500/30': analysisResult.risk_level === 'Yüksek',
+                'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30': analysisResult.risk_level === 'Orta',
+                'bg-green-500/20 text-green-400 border border-green-500/30': analysisResult.risk_level === 'Düşük',
               }"
               >
             {{ analysisResult.risk_color }} {{ analysisResult.risk_level }}

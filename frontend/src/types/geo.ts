@@ -16,6 +16,6 @@ export interface RiskAnalysisResult {
     fault_type: string;
     distance_m: number;
     distance_km: number;
-    risk_level: 'Critical' | 'High' | 'Medium' | 'Low';
+    risk_level: 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük';
     risk_color: string;
 }
