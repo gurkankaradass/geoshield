@@ -4,15 +4,15 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class PropertyModel extends Model
+class UserLocationsModel extends Model
 {
-    protected $table            = 'properties';
+    protected $table            = 'user_locations';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['title', 'location_geom', 'risk_level', 'distance_km', 'closest_fault_name'];
+    protected $allowedFields    = ['title', 'coord_geom', 'risk_level', 'distance_km', 'closest_fault_name'];
 
     protected bool $allowEmptyInserts = false;
     protected bool $updateOnlyChanged = true;
@@ -47,9 +47,9 @@ class PropertyModel extends Model
     /**
      * Tüm mülkleri içindeki POINT verisini okunabilir Enlem/Boylam formatına çevirerek getirir.
      */
-    public function getAllProperties()
+    public function getAllUserLocations()
     {
-        return $this->select("id, title, risk_level, distance_km, closest_fault_name, ST_X(location_geom) as lat, ST_Y(location_geom) as lng, created_at")
+        return $this->select("id, title, risk_level, distance_km, closest_fault_name, ST_X(coord_geom) as lat, ST_Y(coord_geom) as lng, created_at")
             ->orderBy('created_at', 'DESC')->findAll();
     }
 }

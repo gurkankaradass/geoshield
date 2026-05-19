@@ -3,11 +3,11 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\PropertyModel;
+use App\Models\UserLocationsModel;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
 
-class PropertyController extends BaseController
+class UserLocationsController extends BaseController
 {
 
     use ResponseTrait;
@@ -20,11 +20,11 @@ class PropertyController extends BaseController
         header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
         header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE");
 
-        $model = new PropertyModel();
+        $model = new UserLocationsModel();
         // Model içindeki el yapımı uzamsal (spatial) metodumuzu çağırıyoruz
-        $properties = $model->getAllProperties();
+        $user_locations = $model->getAllUserLocations();
 
-        return $this->respond($properties);
+        return $this->respond($user_locations);
     }
 
     /**
@@ -40,7 +40,7 @@ class PropertyController extends BaseController
             die();
         }
 
-        $model = new PropertyModel();
+        $model = new UserLocationsModel();
 
         // Frontend'den gelen JSON verisini yakalıyoruz
         $json = $this->request->getJSON(true);
@@ -52,11 +52,11 @@ class PropertyController extends BaseController
         // MySQL 8 standardında [Lat Lng] (Enlem Boylam) sırasıyla POINT şablonunu kuruyoruz
         $lat = (float)$json['lat'];
         $lng = (float)$json['lng'];
-        $pointWKT = "POINT($lat, $lng)";
+        $pointWKT = "POINT($lat $lng)";
 
         $data = [
             'title' => esc($json['title']),
-            'location_geom' => $model->raw('ST_GeomFromText("' . $pointWKT . '", 4326)'), // Ham SQL geometrisi enjekte ediyoruz
+            'coord_geom' => $model->raw('ST_GeomFromText("' . $pointWKT . '", 4326)'), // Ham SQL geometrisi enjekte ediyoruz
             'risk_level' => esc($json['risk_level']),
             'distance_km' => (float)($json['distance_km']),
             'closest_fault_name' => esc($json['closest_fault_name'])
@@ -82,7 +82,7 @@ class PropertyController extends BaseController
             die();
         }
 
-        $model = new PropertyModel();
+        $model = new UserLocationsModel();
 
         if (!$id || !$model->find($id)) {
             return $this->failNotFound('Silinmek istenen mülk bulunamadı.');

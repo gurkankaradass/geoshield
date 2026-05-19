@@ -12,7 +12,7 @@ $routes->group('api', function ($routes) {
     $routes->get('analyze-risk', 'MapController::analyzeRisk');
 
     // Mülklerim CRUD Rotaları
-    $routes->get('properties', 'PropertyController::index');
-    $routes->post('properties', 'PropertyController::create');
-    $routes->delete('properties/(:num)', 'PropertyController::delete/$1');
+    $routes->get('user_locations', 'UserLocationsController::index');
+    $routes->post('user_locations', 'UserLocationsController::create');
+    $routes->delete('user_locations/(:num)', 'UserLocationsController::delete/$1');
 });

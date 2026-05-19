@@ -23,17 +23,21 @@ class CreateGeoTables extends Migration
 
         // 2. Kullanıcı Konumları Tablosu
         $this->forge->addField([
-            'id'         => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
-            'user_id'    => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
-            'title'      => ['type' => 'VARCHAR', 'constraint' => 255],
-            'risk_score' => ['type' => 'FLOAT', 'null' => true],
-            'created_at' => ['type' => 'DATETIME', 'null' => true],
+            'id'                 => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+            'user_id'            => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true], // Şimdilik auth yoksa null kalabilir
+            'title'              => ['type' => 'VARCHAR', 'constraint' => 255],
+            'coord_geom'      => ['type' => 'POINT', 'null' => false],
+            'risk_level'         => ['type' => 'VARCHAR', 'constraint' => 20, 'null' => true], // Critical, High, Medium, Low
+            'distance_km'        => ['type' => 'DECIMAL', 'constraint' => '10,2', 'null' => true],
+            'closest_fault_name' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+            'created_at'         => ['type' => 'DATETIME', 'null' => true],
+            'updated_at'         => ['type' => 'DATETIME', 'null' => true],
         ]);
         $this->forge->addKey('id', true);
         $this->forge->createTable('user_locations');
 
-        // MariaDB/MySQL uyumlu Point ekleme
-        $this->db->query("ALTER TABLE user_locations ADD coord_geom POINT NOT NULL");
+        // Mekansal index alanımızı coord_geom olarak koruyoruz
+        $db = \Config\Database::connect();
         $this->db->query("ALTER TABLE user_locations ADD SPATIAL INDEX(coord_geom)");
     }
 
