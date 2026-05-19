@@ -39,8 +39,7 @@ class CreatePropertiesTable extends Migration
             'closest_fault_name' => [
                 'type' => 'VARCHAR',
                 'constraint' => '150',
-                'null',
-                false,
+                'null' => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
