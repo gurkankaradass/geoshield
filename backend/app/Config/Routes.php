@@ -8,6 +8,9 @@ use CodeIgniter\Router\RouteCollection;
 $routes->get('/', 'Home::index');
 
 $routes->group('api', function ($routes) {
+    // Tüm preflight (ön kontrol) isteklerini karşılayıp CORS'u tetikleyen can kurtaran satır:
+    $routes->options('(:any)', 'Home::index');
+
     $routes->get('fault-lines', 'MapController::getFaultLines');
     $routes->get('analyze-risk', 'MapController::analyzeRisk');
 

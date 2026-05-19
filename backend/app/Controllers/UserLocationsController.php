@@ -16,10 +16,6 @@ class UserLocationsController extends BaseController
      */
     public function index()
     {
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE");
-
         $model = new UserLocationsModel();
         // Model içindeki el yapımı uzamsal (spatial) metodumuzu çağırıyoruz
         $user_locations = $model->getAllUserLocations();
@@ -32,14 +28,6 @@ class UserLocationsController extends BaseController
      */
     public function create()
     {
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE");
-
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-            die();
-        }
-
         $model = new UserLocationsModel();
 
         // Frontend'den gelen JSON verisini yakalıyoruz
@@ -56,7 +44,7 @@ class UserLocationsController extends BaseController
 
         $data = [
             'title' => esc($json['title']),
-            'coord_geom' => $model->raw('ST_GeomFromText("' . $pointWKT . '", 4326)'), // Ham SQL geometrisi enjekte ediyoruz
+            'coord_geom' => new \CodeIgniter\Database\RawSql('ST_GeomFromText("' . $pointWKT . '", 4326)'), // Ham SQL geometrisi enjekte ediyoruz
             'risk_level' => esc($json['risk_level']),
             'distance_km' => (float)($json['distance_km']),
             'closest_fault_name' => esc($json['closest_fault_name'])
@@ -74,14 +62,6 @@ class UserLocationsController extends BaseController
      */
     public function delete($id = null)
     {
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE");
-
-        if ($_SERVER['REQUEST_METHOD'] === "OPTIONS") {
-            die();
-        }
-
         $model = new UserLocationsModel();
 
         if (!$id || !$model->find($id)) {

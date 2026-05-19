@@ -19,3 +19,15 @@ export interface RiskAnalysisResult {
     risk_level: 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük';
     risk_color: string;
 }
+
+export interface UserLocation {
+    id: number;
+    user_id: number | null;
+    title: string;
+    risk_level: 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük';
+    distance_km: number;
+    closest_fault_name: string;
+    lat: number;
+    lng: number;
+    created_at: string;
+}

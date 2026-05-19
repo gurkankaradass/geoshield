@@ -16,16 +16,6 @@ class MapController extends BaseController
      */
     public function getFaultLines()
     {
-        // Tarayıcı güvenlik duvarını (CORS) lokalde tamamen devre dışı bırakır
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
-
-        $method = $_SERVER['REQUEST_METHOD'];
-        if ($method == "OPTIONS") {
-            die();
-        }
-
         $db = \Config\Database::connect();
 
         // Vue 3 ön yüzünden (Leaflet) gelecek olan harita sınır koordinatları
@@ -70,14 +60,6 @@ class MapController extends BaseController
      */
     public function analyzeRisk()
     {
-        header("Access-Control-Allow-Origin: *");
-        header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method");
-        header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
-
-        if ($_SERVER['REQUEST_METHOD'] === "OPTIONS") {
-            die();
-        }
-
         $db = \Config\Database::connect();
 
         // Frontend'den (Vue 3) gelecek olan tıklama koordinatları

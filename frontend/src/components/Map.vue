@@ -4,8 +4,8 @@ import L from 'leaflet';
 import type { FaultLine } from '../types/geo';
 
 // 🚨 LEAFLET + VUE 3 ZOOM ANIMATION SAFETY PATCH
-const originalAnimateZoom = L.Marker.prototype._animateZoom;
-L.Marker.prototype._animateZoom = function (opt: any) {
+const originalAnimateZoom = (L.Marker.prototype as any)._animateZoom;
+(L.Marker.prototype as any)._animateZoom = function (this: any, opt: any) {
   if (!this._map) return;
   originalAnimateZoom.call(this, opt);
 };
@@ -33,6 +33,8 @@ const map = shallowRef<L.Map | null>(null);
 
 // Haritadaki çizgileri mükemmel bir performansla yönetmek için Leaflet FeatureGroup kullanıyoruz
 const faultLayerGroup = L.featureGroup();
+
+let activeMarker: L.Marker | null = null;
 
 // Aktif tıklama marker'ını güvenli ve temiz yönetmek için Leaflet LayerGroup kullanıyoruz
 const markerLayerGroup = L.layerGroup();
@@ -143,6 +145,31 @@ onMounted(()=>{
     }, 100);
     }
 });
+
+// Dışarıdan (App.vue'dan) çağrılacak olan harita odaklama fonksiyonu
+const focusOnLocation = (lat: number, lng: number) => {
+    if (map.value) {
+        // Haritayı mülkün koordinatına 14 yakınlık derecesiyle yumuşakça uçurur
+        map.value.flyTo([lat, lng], 14, {
+            animate: true,
+            duration: 1.5 // Saniye cinsinden animasyon süresi
+        });
+
+        // Eğer o konumda zaten bir marker yoksa, oraya geçici bir marker koyalım
+        if (activeMarker && map.value) {
+            map.value.removeLayer(activeMarker);
+        }
+        if(map.value) {
+            activeMarker = L.marker([lat, lng], {icon: defaultIcon}).addTo(map.value);
+        }
+    }
+};
+
+// Fonksiyonu ana bileşenin (App.vue) erişimine açıyoruz
+defineExpose({
+    focusOnLocation
+});
+
 </script>
 
 <template>
