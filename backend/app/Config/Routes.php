@@ -14,6 +14,10 @@ $routes->group('api', function ($routes) {
     $routes->get('fault-lines', 'MapController::getFaultLines');
     $routes->get('analyze-risk', 'MapController::analyzeRisk');
 
+    // Kimlik Doğrulama Rotaları
+    $routes->post('register', 'AuthController::register');
+    $routes->post('login', 'AuthController::login');
+
     // Mülklerim CRUD Rotaları
     $routes->get('user_locations', 'UserLocationsController::index');
     $routes->post('user_locations', 'UserLocationsController::create');
