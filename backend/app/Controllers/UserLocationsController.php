@@ -12,22 +12,28 @@ class UserLocationsController extends BaseController
 
     use ResponseTrait;
     /**
-     * Tüm kayıtlı mülkleri listeler.
+     * Sadece giriş yapmış aktif kullanıcının mülklerini listeler.
      */
     public function index()
     {
+        // Filtreden gelen user_id değerini alıyoruz
+        $userId = $this->request->user_id;
+
         $model = new UserLocationsModel();
-        // Model içindeki el yapımı uzamsal (spatial) metodumuzu çağırıyoruz
-        $user_locations = $model->getAllUserLocations();
+
+        // KRİTİK DEĞİŞİKLİK: Sadece bu kullanıcıya ait mülkleri getiriyoruz
+        $user_locations = $model->where('user_id', $userId)->orderBy('created_at', 'DESC')->select('id, title, risk_level, distance_km, closest_fault_name, ST_X(coord_geom) as lat, ST_Y(coord_geom) as lng, created_at')->findAll();
 
         return $this->respond($user_locations);
     }
 
     /**
-     * Yeni bir mülkü mekansal POINT verisiyle birlikte kaydeder.
+     * Yeni mülkü aktif kullanıcının id'siyle ilişkilendirerek kaydeder.
      */
     public function create()
     {
+        $userId = $this->request->user_id; // Filtreden gelen user_id
+
         $model = new UserLocationsModel();
 
         // Frontend'den gelen JSON verisini yakalıyoruz
@@ -43,6 +49,7 @@ class UserLocationsController extends BaseController
         $pointWKT = "POINT($lat $lng)";
 
         $data = [
+            'user_id' => $userId, // Mülkü kullanıcıya zimmetliyoruz
             'title' => esc($json['title']),
             'coord_geom' => new \CodeIgniter\Database\RawSql('ST_GeomFromText("' . $pointWKT . '", 4326)'), // Ham SQL geometrisi enjekte ediyoruz
             'risk_level' => esc($json['risk_level']),
@@ -58,14 +65,18 @@ class UserLocationsController extends BaseController
     }
 
     /**
-     * Kimliği (ID) verilen mülkü veritabanından siler.
+     * Mülkü siler (Güvenlik için mülkün gerçekten o kullanıcıya ait olup olmadığı da kontrol edilebilir)
      */
     public function delete($id = null)
     {
+        $userId = $this->request->user_id;
         $model = new UserLocationsModel();
 
-        if (!$id || !$model->find($id)) {
-            return $this->failNotFound('Silinmek istenen mülk bulunamadı.');
+        // Hem ID kontrolü hem de mülkün o kullanıcıya ait olup olmadığının kontrolü
+        $location = $model->where('id', $id)->where('user_id', $userId)->first();
+
+        if (!$location) {
+            return $this->failNotFound('Silinmek istenen mülk bulunamadı veya bu işlem için yetkiniz yok.');
         }
 
         if ($model->delete($id)) {

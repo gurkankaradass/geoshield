@@ -18,8 +18,8 @@ $routes->group('api', function ($routes) {
     $routes->post('register', 'AuthController::register');
     $routes->post('login', 'AuthController::login');
 
-    // Mülklerim CRUD Rotaları
-    $routes->get('user_locations', 'UserLocationsController::index');
-    $routes->post('user_locations', 'UserLocationsController::create');
-    $routes->delete('user_locations/(:num)', 'UserLocationsController::delete/$1');
+    // Mülklerim CRUD Rotaları (Sadece Giriş Yapmış Kullanıcılara Özel / Filtre Korumalı)
+    $routes->get('user_locations', 'UserLocationsController::index', ['filter' => 'auth']);
+    $routes->post('user_locations', 'UserLocationsController::create', ['filter' => 'auth']);
+    $routes->delete('user_locations/(:num)', 'UserLocationsController::delete/$1', ['filter' => 'auth']);
 });

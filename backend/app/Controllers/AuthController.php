@@ -62,7 +62,7 @@ class AuthController extends BaseController
         $user = $model->where('email', $json['email'])->first();
 
         // Kullanıcı var mı ve şifre doğru mu kontrolü
-        if (!$user || password_verify($json['password'], $user['password'])) {
+        if (!$user || !password_verify($json['password'], $user['password'])) {
             return $this->fail('Hatalı e-posta veya şifre girdiniz.', 400);
         }
 
