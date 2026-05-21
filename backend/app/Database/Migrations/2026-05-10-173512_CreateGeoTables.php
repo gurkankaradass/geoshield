@@ -34,6 +34,11 @@ class CreateGeoTables extends Migration
             'updated_at'         => ['type' => 'DATETIME', 'null' => true],
         ]);
         $this->forge->addKey('id', true);
+
+        // 🔥 YENİ: user_id alanını users tablosunun id alanına bağlıyoruz
+        // users tablosundan bir kullanıcı silinirse mülkleri de otomatik silinsin (CASCADE)
+        $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
+
         $this->forge->createTable('user_locations');
 
         // Mekansal index alanımızı coord_geom olarak koruyoruz
