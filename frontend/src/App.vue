@@ -27,19 +27,12 @@ const propertyTitle = ref('');
 const selectedPropertyType = ref<'house' | 'briefcase' | 'graduation-cap' | 'location-dot'>(
   'location-dot'
 );
-const showMarkersOnMap = ref(true);
 const isSaving = ref(false);
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
 };
 
-// Harita katmanındaki kalıcı piyonları açıp kapatan switch tetikleyicisi
-const handleMarkerSwitchToggle = () => {
-  mapRef.value?.toggleUserLocationsLayer(showMarkersOnMap.value);
-};
-
-// 1. READ: Kayıtlı konumları API'den çeken fonksiyon
 const fetchSavedLocations = async () => {
   if (!isAuthenticated.value) return;
 
@@ -343,19 +336,10 @@ onMounted(() => {
           >
             <span>📋 Kayıtlı Mülklerim</span>
 
-            <div class="flex items-center gap-2 select-none normal-case font-normal">
-              <span class="text-[10px] text-gray-400">Haritada Göster</span>
-              <input
-                type="checkbox"
-                v-model="showMarkersOnMap"
-                @change="handleMarkerSwitchToggle"
-                class="w-7 h-4 bg-gray-800 checked:bg-emerald-500 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 border border-gray-700 focus:outline-none before:content-[''] before:absolute before:w-3 before:h-3 before:bg-white before:rounded-full before:top-[1px] before:left-[1px] checked:before:translate-x-3 before:transition-transform"
-              />
-              <span
-                class="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded-md font-mono"
-                >{{ savedLocations?.length || 0 }}</span
-              >
-            </div>
+            <span
+              class="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded-md font-mono"
+              >{{ savedLocations?.length || 0 }}</span
+            >
           </h3>
 
           <div class="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
