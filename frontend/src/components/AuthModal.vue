@@ -2,10 +2,14 @@
 import { ref } from 'vue';
 import { useAuth } from '../composables/useAuth';
 
+const props = defineProps<{
+  mode?: 'login' | 'register';
+}>();
+
 const emit = defineEmits(['close', 'auth-success']);
 const { setSession } = useAuth();
 
-const isLoginMode = ref(true); // Giriş modu mu, Kayıt modu mu?
+const isLoginMode = ref(props.mode !== 'register'); // Giriş modu mu, Kayıt modu mu?
 const email = ref('');
 const username = ref('');
 const password = ref('');

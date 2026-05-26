@@ -11,6 +11,13 @@ const { token, user, isAuthenticated, logout } = useAuth();
 // Sol menünün açık/kapalı durumunu tutan reaktif state
 const isSidebarOpen = ref(true);
 const isAuthModalOpen = ref(false);
+const authMode = ref<'login' | 'register'>('login');
+
+const openAuthModal = (mode: 'login' | 'register') => {
+  authMode.value = mode;
+  isAuthModalOpen.value = true;
+};
+
 const analysisResult = ref<RiskAnalysisResult | null>(null);
 const isLoading = ref(false);
 
@@ -147,7 +154,7 @@ onMounted(() => {
     <div
       class="fixed inset-y-0 left-0 z-20 flex flex-col bg-gray-900 border-r border-gray-800 transition-all duration-300 ease-in-out md:relative"
       :class="
-        isSidebarOpen ? 'w-115 translate-x-0' : 'w-0 -translate-x-full md:w-16 md:translate-x-0'
+        isSidebarOpen ? 'w-100 translate-x-0' : 'w-0 -translate-x-full md:w-16 md:translate-x-0'
       "
     >
       <div
@@ -155,25 +162,11 @@ onMounted(() => {
       >
         <span
           v-if="isSidebarOpen"
-          class="text-lg font-bold tracking-wider text-emerald-400 uppercase truncate max-w-[140px]"
+          class="text-lg font-bold tracking-wider text-emerald-400 uppercase truncate"
         >
-          {{ isAuthenticated ? `👤 ${user?.username}` : '🛡️ GeoShield' }}
+          🛡️ GeoShield
         </span>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button
-            v-if="isAuthenticated && isSidebarOpen"
-            @click="logout"
-            class="px-2 py-1 rounded bg-gray-800 hover:bg-red-950 hover:text-red-400 text-[10px] font-bold border border-gray-700 hover:border-red-900/50 transition-colors cursor-pointer"
-          >
-            Çıkış
-          </button>
-          <button
-            v-if="!isAuthenticated && isSidebarOpen"
-            @click="isAuthModalOpen = true"
-            class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-gray-950 text-[10px] font-bold transition-colors cursor-pointer"
-          >
-            Giriş Yap
-          </button>
           <button
             @click="toggleSidebar"
             class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 cursor-pointer"
@@ -191,7 +184,7 @@ onMounted(() => {
           <h3 class="font-semibold text-sm text-emerald-400 mb-1">Sismik Analiz Motoru</h3>
           <p class="text-xs text-gray-400 leading-relaxed">
             Haritada herhangi bir yere tıklayarak diri fay mesafesini anlık görebilirsiniz. Analiz
-            ettiğiniz yerleri kaydetmek için giriş yapmanız gerekmektedir.
+            ettiğiniz yerleri kaydetmek için ve kayıtlı yerleri görmek için giriş yapmanız gerekmektedir.
           </p>
         </div>
 
@@ -227,11 +220,11 @@ onMounted(() => {
 
             <div class="text-xs space-y-2 border-b border-gray-700/50 pb-3">
               <p>
-                <span class="text-gray-500">En Yakın Fay:</span>
+                <span class="text-gray-500">En Yakın Fay: </span>
                 <span class="font-semibold text-gray-200">{{ analysisResult.fault_name }}</span>
               </p>
               <p>
-                <span class="text-gray-500">Mesafe:</span>
+                <span class="text-gray-500">Mesafe: </span>
                 <span class="font-bold text-emerald-400 text-sm"
                   >{{ analysisResult.distance_km }} km</span
                 >
@@ -243,7 +236,7 @@ onMounted(() => {
                 >Mülk Türü Seçimi</label
               >
 
-              <div class="grid grid-cols-3 gap-1 bg-gray-950 p-1 rounded-xl border border-gray-800">
+              <div class="grid grid-cols-4 gap-1 bg-gray-950 p-1 rounded-xl border border-gray-800">
                 <button
                   type="button"
                   @click="selectedPropertyType = 'house'"
@@ -279,6 +272,18 @@ onMounted(() => {
                   class="py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <i class="fa-solid fa-graduation-cap"></i> Okul
+                </button>
+                <button
+                  type="button"
+                  @click="selectedPropertyType = 'location-dot'"
+                  :class="
+                    selectedPropertyType === 'location-dot'
+                      ? 'bg-emerald-600 text-gray-950 font-bold'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+                  "
+                  class="py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <i class="fa-solid fa-location-dot"></i> Diğer
                 </button>
               </div>
 
@@ -387,6 +392,40 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
+      <!-- Altta Giriş/Kayıt ve Kullanıcı Bilgileri Paneli -->
+      <div v-if="isSidebarOpen" class="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
+        <!-- Giriş Yapılmamışsa -->
+        <div v-if="!isAuthenticated" class="flex gap-2">
+          <button
+            @click="openAuthModal('login')"
+            class="flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-gray-950 text-xs font-bold transition-all cursor-pointer text-center"
+          >
+            Giriş Yap
+          </button>
+          <button
+            @click="openAuthModal('register')"
+            class="flex-1 py-2 px-3 rounded-lg bg-gray-800 hover:bg-gray-700 text-emerald-400 border border-gray-700 hover:border-gray-600 text-xs font-bold transition-all cursor-pointer text-center""
+          >
+            Kayıt Ol
+          </button>
+        </div>
+        <!-- Giriş Yapılmışsa -->
+        <div v-else class="flex items-center justify-between gap-3">
+          <span
+            class="text-sm font-bold text-gray-200 truncate flex items-center gap-1.5"
+            :title="user?.email"
+          >
+            👤 {{ user?.email }}
+          </span>
+          <button
+            @click="logout"
+            class="px-2.5 py-1.5 rounded bg-gray-800 hover:bg-red-950 hover:text-red-400 text-[10px] font-bold border border-gray-700 hover:border-red-900/50 transition-all cursor-pointer"
+          >
+            Çıkış Yap
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="flex-1 relative flex flex-col h-full w-full min-w-0 overflow-hidden">
@@ -395,6 +434,7 @@ onMounted(() => {
 
     <AuthModal
       v-if="isAuthModalOpen"
+      :mode="authMode"
       @close="isAuthModalOpen = false"
       @auth-success="fetchSavedLocations"
     />
