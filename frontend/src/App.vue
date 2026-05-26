@@ -109,6 +109,7 @@ const saveCurrentLocation = async () => {
       analysisResult.value = null; // Formu kapat
       propertyTitle.value = '';
       selectedPropertyType.value = 'location-dot'; // Formu sıfırla
+      mapRef.value?.clearTempMarker(); // Geçici marker'ı haritadan kaldır
       await fetchSavedLocations(); // Listeyi anlık olarak güncelle
     }
   } catch (error) {
@@ -116,6 +117,14 @@ const saveCurrentLocation = async () => {
   } finally {
     isSaving.value = false;
   }
+};
+
+// Analiz işlemini iptal edip geçici marker'ı haritadan kaldıran fonksiyon
+const cancelAnalysis = () => {
+  analysisResult.value = null;
+  propertyTitle.value = '';
+  selectedPropertyType.value = 'location-dot';
+  mapRef.value?.clearTempMarker();
 };
 
 // 3. DELETE: Kayıtlı mülkü sistemden silen fonksiyon
@@ -198,11 +207,20 @@ onMounted(() => {
         </div>
 
         <div v-if="analysisResult && !isLoading" class="space-y-3">
-          <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3 shadow-2xl">
-            <div class="flex items-center justify-between border-b border-gray-700 pb-2">
+          <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3 shadow-2xl relative">
+            <!-- Kapatma Butonu (X) -->
+            <button
+              @click="cancelAnalysis"
+              class="absolute top-3.5 right-3 text-gray-500 hover:text-gray-300 hover:bg-gray-700/50 p-1 rounded-lg transition-all cursor-pointer flex items-center justify-center w-6 h-6 z-10"
+              title="İşlemi İptal Et"
+            >
+              <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+
+            <div class="flex items-center justify-between border-b border-gray-700 pb-2 pr-6">
               <span class="text-xs font-medium text-gray-400">Analiz Sonucu</span>
               <span
-                class="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase"
+                class="px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase mr-1"
                 :class="{
                   'bg-red-500/20 text-red-400 border border-red-500/30':
                     analysisResult.risk_level === 'Kritik',
@@ -293,11 +311,11 @@ onMounted(() => {
                 placeholder="Örn: Evim, Merkez Ofis, Arsa..."
                 class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-gray-200"
               />
-              <button
+                <button
                 @click="saveCurrentLocation"
                 :disabled="isSaving || !propertyTitle.trim()"
                 class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-800 disabled:text-gray-600 text-gray-950 font-bold py-2 px-4 rounded-lg text-xs transition-all cursor-pointer"
-              >
+                >
                 {{ isSaving ? 'Kaydediliyor...' : '💾 Listeme Ekle' }}
               </button>
             </div>
@@ -375,7 +393,7 @@ onMounted(() => {
                 ></span>
                 <button
                   @click="deleteLocation(loc.id, $event)"
-                  class="text-gray-600 hover:text-red-400 p-1 transition-all opacity-0 group-hover:opacity-100"
+                  class="text-gray-600 hover:text-red-400 p-1 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
                   title="Kaydı Sil"
                 >
                   🗑️

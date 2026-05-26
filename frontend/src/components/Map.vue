@@ -73,6 +73,10 @@ const renderUserLocations = (location: UserLocation[]) => {
 
     const marker = L.marker([loc.lat, loc.lng], { icon: customIcon });
 
+    marker.on('click', () => {
+      focusOnLocation(loc.lat, loc.lng);
+    });
+
     marker.bindPopup(`
     <div class="text-gray-900 font-sans p-1">
     <strong class="text-emerald-500 block text-sm border-b pb-1 mb-1">🏢 ${loc.title}</strong>
@@ -211,11 +215,16 @@ const focusOnLocation = (lat: number, lng: number) => {
   }
 };
 
+const clearTempMarker = () => {
+  markerLayerGroup.clearLayers();
+};
+
 // Fonksiyonu ana bileşenin (App.vue) erişimine açıyoruz
 defineExpose({
   focusOnLocation,
   renderUserLocations,
   toggleUserLocationsLayer,
+  clearTempMarker,
 });
 </script>
 
