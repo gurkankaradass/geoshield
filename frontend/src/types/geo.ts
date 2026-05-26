@@ -24,6 +24,7 @@ export interface UserLocation {
   id: number;
   user_id: number | null;
   title: string;
+  property_type: 'house' | 'briefcase' | 'graduation-cap' | 'location_dot';
   risk_level: 'Kritik' | 'Yüksek' | 'Orta' | 'Düşük';
   distance_km: number;
   closest_fault_name: string;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, shallowRef } from 'vue';
 import L from 'leaflet';
-import type { FaultLine } from '../types/geo';
+import type { FaultLine, UserLocation } from '../types/geo';
 
 // 🚨 LEAFLET + VUE 3 ZOOM ANIMATION SAFETY PATCH
 const originalAnimateZoom = (L.Marker.prototype as any)._animateZoom;
@@ -34,10 +34,66 @@ const map = shallowRef<L.Map | null>(null);
 // Haritadaki çizgileri mükemmel bir performansla yönetmek için Leaflet FeatureGroup kullanıyoruz
 const faultLayerGroup = L.featureGroup();
 
-let activeMarker: L.Marker | null = null;
-
 // Aktif tıklama marker'ını güvenli ve temiz yönetmek için Leaflet LayerGroup kullanıyoruz
 const markerLayerGroup = L.layerGroup();
+
+const userLocationsLayerGroup = L.layerGroup(); // Mülklerin haritada kalıcı durması için grup
+
+// Risk seviyelerine göre dinamik arka plan ve sınır CSS sınıfları
+const getRiskColorClass = (riskLevel: string) => {
+  switch (riskLevel) {
+    case 'Kritik':
+      return 'bg-red-600 border-red-400 text-white shadow-red-600/50';
+    case 'Yüksek':
+      return 'bg-orange-500 border-orange-300 text-white shadow-orange-500/50';
+    case 'Kritik':
+      return 'bg-yellow-500 border-yellow-500 text-white shadow-yellow-500/50';
+    default:
+      return 'bg-green-600 border-green-400 text-white shadow-green-600/50';
+  }
+};
+
+// Giriş Yapmış Kullanıcının Tüm Mülklerini Haritaya Çizen Fonksiyon
+const renderUserLocations = (location: UserLocation[]) => {
+  userLocationsLayerGroup.clearLayers(); // Yeniden çizilmeden önce eski mülk marker'larını temizle
+
+  location.forEach((loc) => {
+    const colorClass = getRiskColorClass(loc.risk_level);
+
+    // FontAwesome İkonunu pürüzsüzce Leaflet DivIcon içerisine Tailwind ile giydiriyoruz
+    const customIcon = L.divIcon({
+      html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-lg transition-all duration-200 hover:scale-110 ${colorClass}">
+      <i class="fa-solid fa-${loc.property_type || 'location_dot'} text-xs"></i>
+      </div>`,
+      className: 'custom-property-marker-wrapper', // Leaflet'in varsayılan beyaz kare stilini sıfırlamak için boş wrapper class'ı
+      iconSize: [32, 32],
+      iconAnchor: [16, 16], // Merkeze tam oturması için
+      popupAnchor: [0, -16],
+    });
+
+    const marker = L.marker([loc.lat, loc.lng], { icon: customIcon });
+
+    marker.bindPopup(`
+    <div class="text-gray-900 font-sans p-1">
+    <strong class="text-emerald-500 block text-sm border-b pb-1 mb-1">🏢 ${loc.title}</strong>
+    <p class="text-[11px] m-0"><span class="text-gray-500">En Yakın Fay Hattı:</span> ${loc.closest_fault_name}</p>
+    <p class="text-[11px] m-0"><span class="text-gray-500">Mesafe:</span><b>${loc.distance_km} km</b></p>
+    </div>
+    `);
+
+    userLocationsLayerGroup.addLayer(marker);
+  });
+};
+
+// Mülk Katman Grubunu Haritadan Kaldırma / Ekleme (Switch için)
+const toggleUserLocationsLayer = (visible: boolean) => {
+  if (!map.value) return;
+  if (visible) {
+    map.value.addLayer(userLocationsLayerGroup);
+  } else {
+    map.value.removeLayer(userLocationsLayerGroup);
+  }
+};
 
 // API'den dinamik veri çeken fonksiyon
 const fetchFaultLines = async () => {
@@ -113,6 +169,9 @@ onMounted(() => {
     // Aktif marker grubunu haritaya bağlıyoruz
     markerLayerGroup.addTo(map.value);
 
+    // Mülk grubu ilk açılışta haritada aktif gelsin
+    userLocationsLayerGroup.addTo(map.value);
+
     // Harita ilk yüklendiğinde fayları getir
     fetchFaultLines();
 
@@ -134,7 +193,7 @@ onMounted(() => {
       emit('map-click', { lat, lng });
     });
 
-    // 🚨 SİHİRLİ SATIR: Harita ilk yüklendiğinde boyut hesaplamalarını milisaniyelik olarak tetikler
+    // SİHİRLİ SATIR: Harita ilk yüklendiğinde boyut hesaplamalarını milisaniyelik olarak tetikler
     setTimeout(() => {
       map.value?.invalidateSize();
     }, 100);
@@ -149,20 +208,14 @@ const focusOnLocation = (lat: number, lng: number) => {
       animate: true,
       duration: 1.5, // Saniye cinsinden animasyon süresi
     });
-
-    // Eğer o konumda zaten bir marker yoksa, oraya geçici bir marker koyalım
-    if (activeMarker && map.value) {
-      map.value.removeLayer(activeMarker);
-    }
-    if (map.value) {
-      activeMarker = L.marker([lat, lng], { icon: defaultIcon }).addTo(map.value);
-    }
   }
 };
 
 // Fonksiyonu ana bileşenin (App.vue) erişimine açıyoruz
 defineExpose({
   focusOnLocation,
+  renderUserLocations,
+  toggleUserLocationsLayer,
 });
 </script>
 
@@ -175,5 +228,10 @@ defineExpose({
 :deep(.leaflet-control-attribution) {
   background: rgba(17, 24, 39, 0.8) !important;
   color: #9ca3af !important;
+}
+/* Leaflet'in divIcon için zorla enjekte ettiği beyaz arka plan kare kutusunu ve kenarlıkları sıfırlıyoruz */
+.custom-property-marker-wrapper {
+  background: transparent !important;
+  border: none !important;
 }
 </style>

@@ -15,12 +15,21 @@ const analysisResult = ref<RiskAnalysisResult | null>(null);
 const isLoading = ref(false);
 
 // Mülklerim CRUD State'leri
-const savedLocations = ref<UserLocation[]>();
+const savedLocations = ref<UserLocation[]>([]);
 const propertyTitle = ref('');
+const selectedPropertyType = ref<'house' | 'briefcase' | 'graduation-cap' | 'location-dot'>(
+  'location-dot'
+);
+const showMarkersOnMap = ref(true);
 const isSaving = ref(false);
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
+};
+
+// Harita katmanındaki kalıcı piyonları açıp kapatan switch tetikleyicisi
+const handleMarkerSwitchToggle = () => {
+  mapRef.value?.toggleUserLocationsLayer(showMarkersOnMap.value);
 };
 
 // 1. READ: Kayıtlı konumları API'den çeken fonksiyon
@@ -33,6 +42,8 @@ const fetchSavedLocations = async () => {
     });
     if (response.ok) {
       savedLocations.value = await response.json();
+      // BAŞARI: Çekilen mülkleri haritadaki kalıcı katmana gönderiyoruz
+      mapRef.value?.renderUserLocations(savedLocations.value);
     }
   } catch (error) {
     console.error('Konumlar listesi yüklenirken hata oluştu:', error);
@@ -69,6 +80,7 @@ const saveCurrentLocation = async () => {
   isSaving.value = true;
   const payload = {
     title: propertyTitle.value.trim(),
+    property_type: selectedPropertyType.value, // FontAwesome ikon adı
     lat: analysisResult.value.input_coords[0],
     lng: analysisResult.value.input_coords[1],
     risk_level: analysisResult.value.risk_level,
@@ -89,6 +101,7 @@ const saveCurrentLocation = async () => {
     if (response.ok) {
       analysisResult.value = null; // Formu kapat
       propertyTitle.value = '';
+      selectedPropertyType.value = 'location-dot'; // Formu sıfırla
       await fetchSavedLocations(); // Listeyi anlık olarak güncelle
     }
   } catch (error) {
@@ -134,7 +147,7 @@ onMounted(() => {
     <div
       class="fixed inset-y-0 left-0 z-20 flex flex-col bg-gray-900 border-r border-gray-800 transition-all duration-300 ease-in-out md:relative"
       :class="
-        isSidebarOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full md:w-16 md:translate-x-0'
+        isSidebarOpen ? 'w-115 translate-x-0' : 'w-0 -translate-x-full md:w-16 md:translate-x-0'
       "
     >
       <div
@@ -227,8 +240,48 @@ onMounted(() => {
 
             <div v-if="isAuthenticated" class="space-y-2 pt-1">
               <label class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold block"
-                >Bu Konumu Kaydet</label
+                >Mülk Türü Seçimi</label
               >
+
+              <div class="grid grid-cols-3 gap-1 bg-gray-950 p-1 rounded-xl border border-gray-800">
+                <button
+                  type="button"
+                  @click="selectedPropertyType = 'house'"
+                  :class="
+                    selectedPropertyType === 'house'
+                      ? 'bg-emerald-600 text-gray-950 font-bold'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+                  "
+                  class="py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <i class="fa-solid fa-house"></i> Ev
+                </button>
+                <button
+                  type="button"
+                  @click="selectedPropertyType = 'briefcase'"
+                  :class="
+                    selectedPropertyType === 'briefcase'
+                      ? 'bg-emerald-600 text-gray-950 font-bold'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+                  "
+                  class="py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <i class="fa-solid fa-briefcase"></i> İş
+                </button>
+                <button
+                  type="button"
+                  @click="selectedPropertyType = 'graduation-cap'"
+                  :class="
+                    selectedPropertyType === 'graduation-cap'
+                      ? 'bg-emerald-600 text-gray-950 font-bold'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+                  "
+                  class="py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <i class="fa-solid fa-graduation-cap"></i> Okul
+                </button>
+              </div>
+
               <input
                 v-model="propertyTitle"
                 type="text"
@@ -266,9 +319,20 @@ onMounted(() => {
             class="text-xs font-bold uppercase tracking-widest text-gray-500 px-1 flex items-center justify-between"
           >
             <span>📋 Kayıtlı Mülklerim</span>
-            <span class="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded-md">{{
-              savedLocations?.length || 0
-            }}</span>
+
+            <div class="flex items-center gap-2 select-none normal-case font-normal">
+              <span class="text-[10px] text-gray-400">Haritada Göster</span>
+              <input
+                type="checkbox"
+                v-model="showMarkersOnMap"
+                @change="handleMarkerSwitchToggle"
+                class="w-7 h-4 bg-gray-800 checked:bg-emerald-500 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 border border-gray-700 focus:outline-none before:content-[''] before:absolute before:w-3 before:h-3 before:bg-white before:rounded-full before:top-[1px] before:left-[1px] checked:before:translate-x-3 before:transition-transform"
+              />
+              <span
+                class="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded-md font-mono"
+                >{{ savedLocations?.length || 0 }}</span
+              >
+            </div>
           </h3>
 
           <div class="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
@@ -278,13 +342,20 @@ onMounted(() => {
               @click="clickLocationItem(loc)"
               class="bg-gray-800/40 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-3 flex items-center justify-between gap-2 transition-all cursor-pointer group"
             >
-              <div class="space-y-1 min-w-0">
-                <h4 class="text-xs font-bold text-gray-200 truncate">{{ loc.title }}</h4>
-                <p class="text-[10px] text-gray-500 truncate flex items-center gap-1">
-                  <span>💥 {{ loc.closest_fault_name }}</span>
-                  <span>•</span>
-                  <span class="font-semibold text-gray-400">{{ loc.distance_km }}</span>
-                </p>
+              <div class="space-y-1 min-w-0 flex items-center gap-2.5">
+                <div
+                  class="w-7 h-7 rounded-full flex items-center justify-center bg-gray-900 border border-gray-800 text-emerald-400 shrink-0 text-xs"
+                >
+                  <i :class="`fa-solid fa-${loc.property_type || 'location_dot'}`"></i>
+                </div>
+                <div class="space-y-1 min-w-0">
+                  <h4 class="text-xs font-bold text-gray-200 truncate">{{ loc.title }}</h4>
+                  <p class="text-[10px] text-gray-500 truncate flex items-center gap-1">
+                    <span>💥 {{ loc.closest_fault_name }}</span>
+                    <span>•</span>
+                    <span class="font-semibold text-gray-400">{{ loc.distance_km }}</span>
+                  </p>
+                </div>
               </div>
 
               <div class="flex items-center gap-2 shrink-0">
@@ -336,6 +407,10 @@ onMounted(() => {
   width: 4px;
 }
 ::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
   background: #374151;
   border-radius: 10px;
 }

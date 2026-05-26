@@ -22,7 +22,7 @@ class UserLocationsController extends BaseController
         $model = new UserLocationsModel();
 
         // KRİTİK DEĞİŞİKLİK: Sadece bu kullanıcıya ait mülkleri getiriyoruz
-        $user_locations = $model->where('user_id', $userId)->orderBy('created_at', 'DESC')->select('id, title, risk_level, distance_km, closest_fault_name, ST_X(coord_geom) as lat, ST_Y(coord_geom) as lng, created_at')->findAll();
+        $user_locations = $model->where('user_id', $userId)->orderBy('created_at', 'DESC')->select('id, title, property_type, risk_level, distance_km, closest_fault_name, ST_X(coord_geom) as lat, ST_Y(coord_geom) as lng, created_at')->findAll();
 
         return $this->respond($user_locations);
     }
@@ -51,6 +51,7 @@ class UserLocationsController extends BaseController
         $data = [
             'user_id' => $userId, // Mülkü kullanıcıya zimmetliyoruz
             'title' => esc($json['title']),
+            'property_type' => esc($json['property_type'] ?? 'location_dot'),
             'coord_geom' => new \CodeIgniter\Database\RawSql('ST_GeomFromText("' . $pointWKT . '", 4326)'), // Ham SQL geometrisi enjekte ediyoruz
             'risk_level' => esc($json['risk_level']),
             'distance_km' => (float)($json['distance_km']),
