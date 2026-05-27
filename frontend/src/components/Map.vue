@@ -277,11 +277,22 @@ const clearTempMarker = () => {
   markerLayerGroup.clearLayers();
 };
 
+// Fay hatlarını haritadan kaldıran veya ekleyen fonksiyon
+const toggleFaultLinesLayer = (visible: boolean) => {
+  if (!map.value) return;
+  if (visible) {
+    map.value.addLayer(faultLayerGroup);
+  } else {
+    map.value.removeLayer(faultLayerGroup);
+  }
+};
+
 defineExpose({
   focusOnLocation,
   renderUserLocations,
   toggleUserLocationsLayer,
   clearTempMarker,
+  toggleFaultLinesLayer,
 });
 </script>
 

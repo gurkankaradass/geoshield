@@ -33,6 +33,12 @@ const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
 };
 
+const showFaultLines = ref(true); // Fay hatları başlangıçta açık gelsin
+
+const handleFaultSwitchToggle = () => {
+  mapRef.value?.toggleFaultLinesLayer(showFaultLines.value);
+};
+
 const fetchSavedLocations = async () => {
   if (!isAuthenticated.value) return;
 
@@ -188,6 +194,23 @@ onMounted(() => {
             Haritada herhangi bir yere tıklayarak diri fay mesafesini anlık görebilirsiniz. Analiz
             ettiğiniz yerleri kaydetmek için ve kayıtlı yerleri görmek için giriş yapmanız gerekmektedir.
           </p>
+        </div>
+
+        <div class="bg-gray-800/40 border border-gray-800 rounded-xl p-3 space-y-2">
+          <h4 class="text-[11px] font-bold uppercase tracking-wider text-gray-500 px-1">Harita Katmanları</h4>
+          
+          <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/40 border border-gray-800/60 select-none">
+            <span class="text-xs text-gray-300 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+              Aktif Fay Hatları
+            </span>
+            <input 
+              type="checkbox" 
+              v-model="showFaultLines" 
+              @change="handleFaultSwitchToggle" 
+              class="w-7 h-4 bg-gray-800 checked:bg-red-600 rounded-full appearance-none cursor-pointer relative transition-colors duration-200 border border-gray-700 focus:outline-none before:content-[''] before:absolute before:w-3 before:h-3 before:bg-white before:rounded-full before:top-[1px] before:left-[1px] checked:before:translate-x-3 before:transition-transform" 
+            />
+          </div>
         </div>
 
         <div
