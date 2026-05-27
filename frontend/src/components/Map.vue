@@ -15,29 +15,24 @@ const defaultIcon = L.icon({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41], // İkonun gerçek piksel boyutu
-  iconAnchor: [12, 41], // İkonun tam olarak hangi noktasının koordinata çakılacağı (En alt orta nokta)
-  popupAnchor: [1, -34], // Açılacak popup'ın ikona göre konumu
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
   shadowSize: [41, 41],
-  shadowAnchor: [12, 41], // Gölge ikonun çakılma noktası (ikon ile aynı)
+  shadowAnchor: [12, 41],
 });
 
-// Tıklama olayını dışarıya (App.vue'ya) paslamak için emit tanımlıyoruz
 const emit = defineEmits<{
   (e: 'map-click', payload: { lat: number; lng: number }): void;
 }>();
 
 const mapContainer = ref<HTMLElement | null>(null);
-// Vue 3 reactivity sisteminin Leaflet nesnelerini bozmasını önlemek için shallowRef kullanıyoruz
 const map = shallowRef<L.Map | null>(null);
 
-// Haritadaki çizgileri mükemmel bir performansla yönetmek için Leaflet FeatureGroup kullanıyoruz
+// Katman Grupları
 const faultLayerGroup = L.featureGroup();
-
-// Aktif tıklama marker'ını güvenli ve temiz yönetmek için Leaflet LayerGroup kullanıyoruz
 const markerLayerGroup = L.layerGroup();
-
-const userLocationsLayerGroup = L.layerGroup(); // Mülklerin haritada kalıcı durması için grup
+const userLocationsLayerGroup = L.layerGroup();
 
 // Risk seviyelerine göre dinamik arka plan ve sınır CSS sınıfları
 const getRiskColorClass = (riskLevel: string) => {
@@ -46,8 +41,8 @@ const getRiskColorClass = (riskLevel: string) => {
       return 'bg-red-600 border-red-400 text-white shadow-red-600/50';
     case 'Yüksek':
       return 'bg-orange-500 border-orange-300 text-white shadow-orange-500/50';
-    case 'Kritik':
-      return 'bg-yellow-500 border-yellow-500 text-white shadow-yellow-500/50';
+    case 'Orta':
+      return 'bg-yellow-500 border-yellow-300 text-gray-950 shadow-yellow-500/50';
     default:
       return 'bg-green-600 border-green-400 text-white shadow-green-600/50';
   }
@@ -55,19 +50,18 @@ const getRiskColorClass = (riskLevel: string) => {
 
 // Giriş Yapmış Kullanıcının Tüm Mülklerini Haritaya Çizen Fonksiyon
 const renderUserLocations = (location: UserLocation[]) => {
-  userLocationsLayerGroup.clearLayers(); // Yeniden çizilmeden önce eski mülk marker'larını temizle
+  userLocationsLayerGroup.clearLayers();
 
   location.forEach((loc) => {
     const colorClass = getRiskColorClass(loc.risk_level);
 
-    // FontAwesome İkonunu pürüzsüzce Leaflet DivIcon içerisine Tailwind ile giydiriyoruz
     const customIcon = L.divIcon({
       html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-lg transition-all duration-200 hover:scale-110 ${colorClass}">
-      <i class="fa-solid fa-${loc.property_type || 'location_dot'} text-xs"></i>
-      </div>`,
-      className: 'custom-property-marker-wrapper', // Leaflet'in varsayılan beyaz kare stilini sıfırlamak için boş wrapper class'ı
+              <i class="fa-solid fa-${loc.property_type || 'location-dot'} text-xs"></i>
+             </div>`,
+      className: 'custom-property-marker-wrapper',
       iconSize: [32, 32],
-      iconAnchor: [16, 16], // Merkeze tam oturması için
+      iconAnchor: [16, 16],
       popupAnchor: [0, -16],
     });
 
@@ -78,18 +72,17 @@ const renderUserLocations = (location: UserLocation[]) => {
     });
 
     marker.bindPopup(`
-    <div class="text-gray-900 font-sans p-1">
-    <strong class="text-emerald-500 block text-sm border-b pb-1 mb-1">🏢 ${loc.title}</strong>
-    <p class="text-[11px] m-0"><span class="text-gray-500">En Yakın Fay Hattı:</span> ${loc.closest_fault_name}</p>
-    <p class="text-[11px] m-0"><span class="text-gray-500">Mesafe:</span><b>${loc.distance_km} km</b></p>
-    </div>
+      <div class="text-gray-900 font-sans p-1">
+        <strong class="text-emerald-500 block text-sm border-b pb-1 mb-1">🏢 ${loc.title}</strong>
+        <p class="text-[11px] m-0"><span class="text-gray-500">En Yakın Fay Hattı:</span> ${loc.closest_fault_name}</p>
+        <p class="text-[11px] m-0"><span class="text-gray-500">Mesafe:</span> <b>${loc.distance_km} km</b></p>
+      </div>
     `);
 
     userLocationsLayerGroup.addLayer(marker);
   });
 };
 
-// Mülk Katman Grubunu Haritadan Kaldırma / Ekleme (Switch için)
 const toggleUserLocationsLayer = (visible: boolean) => {
   if (!map.value) return;
   if (visible) {
@@ -99,55 +92,41 @@ const toggleUserLocationsLayer = (visible: boolean) => {
   }
 };
 
-// API'den dinamik veri çeken fonksiyon
 const fetchFaultLines = async () => {
   if (!map.value) return;
-
-  // Haritanın o anki ekran sınırlarını (Bounding Box) alıyoruz
   const bounds = map.value.getBounds();
-  const sw = bounds.getSouthWest(); // Güneybatı koordinatları
-  const ne = bounds.getNorthEast(); // Kuzeydoğu koordinatları
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
 
   try {
-    // CodeIgniter 4 API'mize sınır koordinatlarını parametre olarak geçiyoruz
     const response = await fetch(
       `http://localhost:8080/api/fault-lines?swLng=${sw.lng}&swLat=${sw.lat}&neLng=${ne.lng}&neLat=${ne.lat}`
     );
-
     if (!response.ok) throw new Error('API hatası oluştu.');
-
     const data: FaultLine[] = await response.json();
 
-    // Yeni çizgileri çizmeden önce eski çizgileri haritadan temizliyoruz
     faultLayerGroup.clearLayers();
 
-    // Gelen her bir fay hattını parse edip haritaya çiziyoruz
     data.forEach((line) => {
-      // Backend'den gelen format: LINESTRING(26.91 40.62, 26.90 40.62)
-      // Bunu Leaflet'in anlayacağı [[40.62, 26.91], [40.62, 26.90]] (Lat, Lng) formatına çeviriyoruz
       const rawCoords = line.coordinates.replace('LINESTRING(', '').replace(')', '').split(',');
-
       const leafletCoords = rawCoords.map((pair) => {
         const [lat, lng] = pair.trim().split(' ');
         return [parseFloat(lat), parseFloat(lng)] as [number, number];
       });
 
-      // Çizgiyi oluşturup rengini ve kalınlığını ayarlıyoruz
       const polyline = L.polyline(leafletCoords, {
-        color: line.type === 'Diri Fay' ? '#c10000' : '#ff5000', // Tailwind red-500
-        weight: 3,
-        opacity: 1,
+        color: line.type === 'Diri Fay' ? '#c10000' : '#ff5000',
+        weight: 2,
+        opacity: 0.75,
       });
 
-      // Çizgiye tıklandığında popup penceresinde fayın adını ve tipini gösteriyoruz
       polyline.bindPopup(`
-            <div class="text-gray-900 font-sans p-1">
-            <strong class="text-red-600 block text-sm border-b pb-1 mb-1">🌋 ${line.type}</strong>
-            <p class="text-xs font-semibold m-0">Adı: ${line.name}</p>
-            </div>
-            `);
+        <div class="text-gray-900 font-sans p-1">
+          <strong class="text-red-600 block text-sm border-b pb-1 mb-1">🌋 ${line.type}</strong>
+          <p class="text-xs font-semibold m-0">Adı: ${line.name}</p>
+        </div>
+      `);
 
-      // Çizgiyi grubumuza ekliyoruz
       polyline.addTo(faultLayerGroup);
     });
   } catch (error) {
@@ -155,63 +134,142 @@ const fetchFaultLines = async () => {
   }
 };
 
+// 🎯 Haritayı Varsayılan Türkiye Odağına Döndüren Metot
+const resetMapView = () => {
+  if (map.value) {
+    map.value.setView([38.72, 35.48], 6);
+  }
+};
+
+// 📍 Kullanıcının GPS Konumunu Bulan Metot
+const locateUser = () => {
+  if (!map.value) return;
+
+  if (!navigator.geolocation) {
+    alert('Tarayıcınız konum servislerini desteklemiyor.');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+
+      if (map.value) {
+        map.value.flyTo([latitude, longitude], 13, { animate: true, duration: 1.5 });
+
+        // Konumun üzerine geçici bir mavi daire ve marker çakalım
+        markerLayerGroup.clearLayers();
+        L.circle([latitude, longitude], {
+          radius: 300,
+          color: '#10b981',
+          fillColor: '#10b981',
+          fillOpacity: 0.15,
+        }).addTo(markerLayerGroup);
+        L.marker([latitude, longitude], { icon: defaultIcon }).addTo(markerLayerGroup);
+
+        // Üst katmana da bildirip analizi tetikleyelim
+        emit('map-click', { lat: latitude, lng: longitude });
+      }
+    },
+    (error) => {
+      console.error('Konum alınamadı:', error);
+      alert('Konumunuza erişim izni verilemedi.');
+    },
+    { enableHighAccuracy: true }
+  );
+};
+
 onMounted(() => {
   if (mapContainer.value) {
-    // Haritayı Ganos Segmenti (Marmara/Çanakkale civarı) yakınlarında başlatıyoruz ki veriyi hemen görelim
-    map.value = L.map(mapContainer.value).setView([38.72, 35.48], 6);
+    map.value = L.map(mapContainer.value, {
+      zoomControl: false, // Varsayılan çirkin +/- butonunu kapatıp kendimiz yönetiyoruz
+    }).setView([38.72, 35.48], 6);
 
-    // OpenStreetMap harita katmanını ekliyoruz
-    L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
+    // 🌍 KATMAN TANIMLAMALARI (İstediğin Tam Liste)
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    });
+
+    const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenTopoMap contributors',
+    });
+
+    const cartoLight = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {
+        attribution: '© Carto contributors',
+      }
+    );
+
+    const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
       subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-      attribution: '&copy; Google Maps',
-    }).addTo(map.value);
+      attribution: '© Google Maps',
+    });
 
-    // Çizgi grubunu haritaya bağlıyoruz
+    const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: '© Google Maps',
+    });
+
+    const googleTerrain = L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: '© Google Maps',
+    });
+
+    const esriSat = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles © Esri',
+      }
+    );
+
+    // Varsayılan olarak Google Hybrid ile başlasın (Faylar ve yollar en net bunda görünür)
+    googleHybrid.addTo(map.value);
+
+    // 🎛️ Leaflet Yerel Katman Seçici (BaseMaps Kontrolü)
+    const baseMaps = {
+      'Google Uydu Karışık': googleHybrid,
+      'Google Saf Uydu': googleSat,
+      'Google Arazi': googleTerrain,
+      'Esri Dünya Uydu': esriSat,
+      'OpenStreetMap Standart': osm,
+      'Açık Topo Haritası': topo,
+      'Carto Açık Tema': cartoLight,
+    };
+
+    // Sağ üst köşeye şık katman kutusunu yerleştiriyoruz
+    L.control
+      .layers(baseMaps, undefined, { position: 'topright', collapsed: true })
+      .addTo(map.value);
+
+    // Yerel yakınlaştırma (+/-) butonunu sağ alta şıkça koyalım
+    L.control.zoom({ position: 'topleft' }).addTo(map.value);
+
+    // Grupları harita nesnesine bağlıyoruz
     faultLayerGroup.addTo(map.value);
-
-    // Aktif marker grubunu haritaya bağlıyoruz
     markerLayerGroup.addTo(map.value);
-
-    // Mülk grubu ilk açılışta haritada aktif gelsin
     userLocationsLayerGroup.addTo(map.value);
 
-    // Harita ilk yüklendiğinde fayları getir
     fetchFaultLines();
 
-    // HARİKA UX: Kullanıcı haritayı sürüklemeyi (moveend) veya yakınlaştırmayı (zoomend)
-    // bitirdiği an yeni ekran sınırlarına göre API tetiklenir
     map.value.on('moveend', fetchFaultLines);
 
-    // Haritaya tıklama olayını yakalayıp konsola basalım (İleride API'ye bağlanacak)
     map.value.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
-
-      // Eski marker'ları gruptan temizliyoruz
       markerLayerGroup.clearLayers();
-
-      // Tıklanan yere yeni bir marker oluşturup gruba ekliyoruz
       L.marker([lat, lng], { icon: defaultIcon }).addTo(markerLayerGroup);
-
-      // Üst katmana koordinatları fırlatıyoruz
       emit('map-click', { lat, lng });
     });
 
-    // SİHİRLİ SATIR: Harita ilk yüklendiğinde boyut hesaplamalarını milisaniyelik olarak tetikler
     setTimeout(() => {
       map.value?.invalidateSize();
     }, 100);
   }
 });
 
-// Dışarıdan (App.vue'dan) çağrılacak olan harita odaklama fonksiyonu
 const focusOnLocation = (lat: number, lng: number) => {
   if (map.value) {
-    // Haritayı mülkün koordinatına 14 yakınlık derecesiyle yumuşakça uçurur
-    map.value.flyTo([lat, lng], 14, {
-      animate: true,
-      duration: 1.5, // Saniye cinsinden animasyon süresi
-    });
+    map.value.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
   }
 };
 
@@ -219,7 +277,6 @@ const clearTempMarker = () => {
   markerLayerGroup.clearLayers();
 };
 
-// Fonksiyonu ana bileşenin (App.vue) erişimine açıyoruz
 defineExpose({
   focusOnLocation,
   renderUserLocations,
@@ -229,18 +286,88 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="mapContainer" class="w-full h-full z-10"></div>
+  <div class="w-full h-full relative">
+    <div ref="mapContainer" class="w-full h-full z-10"></div>
+
+    <div class="absolute bottom-4 left-4 z-[500] flex flex-col gap-2 select-none">
+      <button
+        @click="resetMapView"
+        class="w-10 h-10 rounded-xl bg-gray-900/90 hover:bg-gray-800 border border-gray-800 text-emerald-400 hover:text-emerald-300 transition-all duration-200 shadow-2xl flex items-center justify-center cursor-pointer group backdrop-blur-sm"
+        title="Haritayı Türkiye Odağına Sıfırla"
+      >
+        <i class="fa-solid fa-rotate text-base group-hover:scale-110 transition-transform"></i>
+      </button>
+
+      <button
+        @click="locateUser"
+        class="w-10 h-10 rounded-xl bg-gray-900/90 hover:bg-gray-800 border border-gray-800 text-emerald-400 hover:text-emerald-300 transition-all duration-200 shadow-2xl flex items-center justify-center cursor-pointer group backdrop-blur-sm"
+        title="Mevcut Konumumu Bul"
+      >
+        <i
+          class="fa-solid fa-location-crosshairs text-base group-hover:rotate-45 transition-transform"
+        ></i>
+      </button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-/* Harita altındaki Leaflet yazılarının karanlık temaya uyumu */
 :deep(.leaflet-control-attribution) {
-  background: rgba(17, 24, 39, 0.8) !important;
+  background: rgba(11, 17, 31, 0.8) !important;
   color: #9ca3af !important;
+  backdrop-blur: 4px;
 }
-/* Leaflet'in divIcon için zorla enjekte ettiği beyaz arka plan kare kutusunu ve kenarlıkları sıfırlıyoruz */
-.custom-property-marker-wrapper {
-  background: transparent !important;
-  border: none !important;
+
+/* Leaflet Katman Kontrol Kutusunu Koyu Temaya Giydiriyoruz */
+:deep(.leaflet-control-layers) {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  border: 1px solid #1f2937 !important;
+  border-radius: 12px !important;
+  color: #10b981 !important;
+  font-family: sans-serif;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+}
+:deep(.leaflet-control-layers-toggle) {
+  filter: brightness(0) saturate(100%) invert(64%) sepia(34%) saturate(1142%) hue-rotate(124deg)
+    brightness(94%) contrast(92%) !important;
+  transition: filter 0.15s ease;
+}
+:deep(.leaflet-control-layers-toggle:hover) {
+  filter: brightness(0) saturate(100%) invert(75%) sepia(35%) saturate(1200%) hue-rotate(120deg)
+    brightness(95%) contrast(90%) !important;
+}
+:deep(.leaflet-control-layers-list) {
+  font-size: 11px !important;
+  padding: 4px;
+}
+:deep(.leaflet-control-layers-base label) {
+  margin-bottom: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+:deep(.leaflet-control-layers-base label:hover) {
+  background-color: #1f2937;
+}
+
+/* Zoom Butonlarını Koyu Temaya Giydiriyoruz */
+:deep(.leaflet-bar) {
+  border: 1px solid #1f2937 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+:deep(.leaflet-bar a) {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  color: #10b981 !important;
+  border-bottom: 1px solid #1f2937 !important;
+  transition: background-color 0.15s;
+}
+:deep(.leaflet-bar a:hover) {
+  background-color: #1f2937 !important;
+  color: #34d399 !important;
 }
 </style>
