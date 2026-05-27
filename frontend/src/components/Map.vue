@@ -29,6 +29,11 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLElement | null>(null);
 const map = shallowRef<L.Map | null>(null);
 
+// Haritada Konum Arama (Searchbar) State'leri
+const searchQuery = ref('');
+const searchResults = ref<any[]>([]);
+const isSearching = ref(false);
+
 // Katman Grupları
 const faultLayerGroup = L.featureGroup();
 const markerLayerGroup = L.layerGroup();
@@ -134,14 +139,15 @@ const fetchFaultLines = async () => {
   }
 };
 
-// 🎯 Haritayı Varsayılan Türkiye Odağına Döndüren Metot
+// Haritayı Varsayılan Türkiye Odağına Döndüren Metot
 const resetMapView = () => {
   if (map.value) {
-    map.value.setView([38.72, 35.48], 6);
+    map.value.setView([38.72, 35.48], 6, { animate: true, duration: 1.5 });
+    map.value.closePopup();
   }
 };
 
-// 📍 Kullanıcının GPS Konumunu Bulan Metot
+// Kullanıcının GPS Konumunu Bulan Metot
 const locateUser = () => {
   if (!map.value) return;
 
@@ -177,6 +183,76 @@ const locateUser = () => {
     },
     { enableHighAccuracy: true }
   );
+};
+
+// OpenStreetMap Nominatim Servisi ile Adres Arama Metodu
+const searchLocation = async () => {
+  if (!searchQuery.value.trim()) return;
+
+  isSearching.value = true;
+  searchResults.value = [];
+
+  try {
+    // Türkiye öncelikli ve Türkçe dil destekli adres sorgusu atıyoruz
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery.value)}&accept-language=tr&countrycodes=tr&limit=5`
+    );
+
+    if (response.ok) {
+      searchResults.value = await response.json();
+    }
+  } catch (error) {
+    console.error('Adres aranırken hata oluştu:', error);
+  } finally {
+    isSearching.value = false;
+  }
+};
+
+let debounceTimeout: number | undefined;
+
+// Input değiştikçe aramayı tetikleyen fonksiyon
+const handleInput = () => {
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout);
+  }
+  if (!searchQuery.value.trim()) {
+    searchResults.value = [];
+    return;
+  }
+  debounceTimeout = window.setTimeout(() => {
+    searchLocation();
+  }, 300);
+};
+
+// Dropdown'dan adres seçildiğinde haritayı uçuran metot
+const selectResult = (result: any) => {
+  const lat = parseFloat(result.lat);
+  const lng = parseFloat(result.lon);
+
+  if (map.value) {
+    // Haritayı seçilen adrese pürüzsüzce uçuruyoruz
+    map.value.flyTo([lat, lng], 13, { animate: true, duration: 1.5 });
+
+    // Oraya analiz marker'ı çakıp üst bileşene (App.vue) tıklama sinyali gönderiyoruz
+    markerLayerGroup.clearLayers();
+    L.marker([lat, lng], { icon: defaultIcon }).addTo(markerLayerGroup);
+    emit('map-click', { lat, lng });
+  }
+
+  // Arama kutusunu ve listeyi temizle
+  searchQuery.value = result.display_name;
+  searchResults.value = [];
+};
+
+// Dışarıdan veya içeriden arama kutusunu kapatmak için tıklama temizleyici
+const clearSearchResults = () => {
+  searchResults.value = [];
+};
+
+// Arama girişini ve sonuçlarını tamamen sıfırlayan fonksiyon
+const clearSearch = () => {
+  searchQuery.value = '';
+  searchResults.value = [];
 };
 
 onMounted(() => {
@@ -259,6 +335,7 @@ onMounted(() => {
       markerLayerGroup.clearLayers();
       L.marker([lat, lng], { icon: defaultIcon }).addTo(markerLayerGroup);
       emit('map-click', { lat, lng });
+      clearSearchResults(); // Haritaya tıklanınca arama dropdown'ını kapatır
     });
 
     setTimeout(() => {
@@ -293,12 +370,60 @@ defineExpose({
   toggleUserLocationsLayer,
   clearTempMarker,
   toggleFaultLinesLayer,
+  clearSearch,
+  resetMapView,
 });
 </script>
 
 <template>
   <div class="w-full h-full relative">
     <div ref="mapContainer" class="w-full h-full z-10"></div>
+
+    <div
+      class="absolute top-4 left-1/2 -translate-x-1/2 z-[500] w-full max-w-sm md:max-w-md px-4 select-none"
+    >
+      <div
+        class="relative bg-gray-900/90 border border-gray-800 rounded-2xl shadow-2xl backdrop-blur-sm p-1.5 flex items-center gap-1"
+      >
+        <div class="pl-2.5 text-gray-500">
+          <i v-if="!isSearching" class="fa-solid fa-magnifying-glass text-xs"></i>
+          <i v-else class="fa-solid fa-circle-notch fa-spin text-xs text-emerald-400"></i>
+        </div>
+
+        <input
+          v-model="searchQuery"
+          @input="handleInput"
+          @keyup.enter="searchLocation"
+          type="text"
+          placeholder="Şehir, ilçe, mahalle veya adres arayın..."
+          class="flex-1 bg-transparent border-none outline-none text-xs text-gray-200 px-1 py-1.5 placeholder-gray-500 focus:ring-0"
+        />
+
+        <button
+          v-if="searchQuery"
+          @click="clearSearch"
+          class="px-2.5 py-1.5 rounded-xl bg-gray-850 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-red-400 font-bold text-xs transition-all duration-200 cursor-pointer flex items-center justify-center w-7 h-7 shrink-0"
+          title="Aramayı Temizle"
+        >
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div
+        v-if="searchResults.length > 0"
+        class="absolute left-4 right-4 mt-1 bg-gray-900/95 border border-gray-800 rounded-2xl shadow-2xl backdrop-blur-md max-h-60 overflow-y-auto z-[501] divide-y divide-gray-800/60"
+      >
+        <button
+          v-for="(result, index) in searchResults"
+          :key="index"
+          @click="selectResult(result)"
+          class="w-full text-left px-4 py-3 text-[11px] text-gray-300 hover:bg-gray-800/60 hover:text-emerald-400 transition-colors flex items-start gap-2.5 cursor-pointer"
+        >
+          <i class="fa-solid fa-location-dot text-gray-500 mt-0.5 shrink-0"></i>
+          <span class="truncate leading-relaxed">{{ result.display_name }}</span>
+        </button>
+      </div>
+    </div>
 
     <div class="absolute bottom-4 left-4 z-[500] flex flex-col gap-2 select-none">
       <button

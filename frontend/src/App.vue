@@ -124,6 +124,8 @@ const cancelAnalysis = () => {
   propertyTitle.value = '';
   selectedPropertyType.value = 'location-dot';
   mapRef.value?.clearTempMarker();
+  mapRef.value?.clearSearch();
+  mapRef.value?.resetMapView();
 };
 
 // 3. DELETE: Kayıtlı mülkü sistemden silen fonksiyon
