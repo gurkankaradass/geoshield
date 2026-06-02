@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -25,7 +26,8 @@ function createWindow() {
     // mainWindow.webContents.openDevTools();
   } else {
     // Üretim aşamasında (Build alındığında) derlenmiş index.html dosyasını yükle
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = path.join(app.getAppPath(), 'dist', 'index.html');
+    mainWindow.loadURL(pathToFileURL(indexPath).href);
   }
 
   mainWindow.on('closed', () => {

@@ -10,7 +10,31 @@
     "preview": "vite preview",
     "desktop:dev": "vite --mode desktop",
     "desktop:clean": "rimraf dist dist-electron",
-    "desktop:build": "npm run desktop:clean && vue-tsc && vite build --mode desktop"
+    "desktop:build": "npm run desktop:clean && vue-tsc && vite build --mode desktop",
+    "desktop:package": "npm run desktop:build && electron-builder"
+  },
+  "build": {
+    "appId": "com.gurkan.geoshield",
+    "productName": "GeoShield",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GeoShield"
+    }
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -24,9 +48,11 @@
     "@vue/tsconfig": "^0.9.1",
     "autoprefixer": "^10.5.0",
     "electron": "^42.3.2",
+    "electron-builder": "^26.8.1",
     "postcss": "^8.5.14",
     "rimraf": "^6.1.3",
     "tailwindcss": "^4.3.0",
+    "ts-node": "^10.9.2",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
     "vite-plugin-electron": "^1.0.0",
